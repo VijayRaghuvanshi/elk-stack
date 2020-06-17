@@ -1,0 +1,61 @@
+GET global-perf-2020.*.*/_search
+{"size":0,
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "term": {
+                        "mon_key": {
+                            "value": 305,
+                            "boost": 1
+                        }
+                    }
+                },
+                {
+                    "term": {
+                        "interface_info_key.keyword": {
+                            "value": "WORKSPACE",
+                            "boost": 1
+                        }
+                    }
+                }
+            ],
+            "filter": [
+                {
+                    "range": {
+                        "@timestamp": {
+                            "from": "2020-02-17T11:55:00.000Z",
+                            "to": "2020-02-18T11:55:00.000Z",
+                            "include_lower": true,
+                            "include_upper": true,
+                            "boost": 1
+                        }
+                    }
+                }
+            ],
+            "adjust_pure_negative": true,
+            "boost": 1
+        }
+    },
+    "aggs": {
+        "time_aggregation": {
+            "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1m",
+                "offset": 0,
+                "order": {
+                    "_key": "asc"
+                },
+                "keyed": false,
+                "min_doc_count": 0
+            },
+            "aggregations": {
+                "index_value": {
+                    "max": {
+                        "field": "brightics.perf.index_value"
+                    }
+                }
+            }
+        }
+    }
+}

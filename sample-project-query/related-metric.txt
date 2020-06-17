@@ -1,0 +1,105 @@
+POST hotel-perf-2019.12.*/_search
+{
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "match": {
+                        "mon_key": {
+                            "query": "GS/K/P6GlDMJZHcLFltXF/pIuLLhZhz4Uog36eLxNOI=",
+                            "operator": "OR",
+                            "prefix_length": 0,
+                            "max_expansions": 50,
+                            "fuzzy_transpositions": true,
+                            "lenient": false,
+                            "zero_terms_query": "NONE",
+                            "auto_generate_synonyms_phrase_query": true,
+                            "boost": 1
+                        }
+                    }
+                }
+            ],
+            "filter": [
+                {
+                    "range": {
+                        "@timestamp": {
+                            "from": "2019-12-22T19:47:31.000Z",
+                            "to": "2019-12-22T22:47:31.000Z",
+                            "include_lower": true,
+                            "include_upper": true,
+                            "boost": 1
+                        }
+                    }
+                }
+            ],
+            "adjust_pure_negative": true,
+            "boost": 1
+        }
+    },
+    "aggs": {
+        "time_aggregation": {
+            "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1m",
+                "offset": 0,
+                "order": {
+                    "_key": "asc"
+                },
+                "keyed": false,
+                "min_doc_count": 0
+            },
+            "aggregations": {
+                "proc_cpuutil": {
+                    "max": {
+                        "field": "sherpa-4.0.perf.proc_cpuutil"
+                    }
+                },
+                "out_pps_avg": {
+                    "max": {
+                        "field": "sherpa-4.0.perf.out_pps_avg"
+                    }
+                },
+                "Oracle Wait(Latch)": {
+                    "max": {
+                        "field": "sherpa-4.0.perf.Oracle Wait(Latch)"
+                    }
+                },
+                "out_pps_min": {
+                    "max": {
+                        "field": "sherpa-4.0.perf.out_pps_min"
+                    }
+                },
+                "out_broadcast_ratio_max": {
+                    "max": {
+                        "field": "sherpa-4.0.perf.out_broadcast_ratio_max"
+                    }
+                },
+                "Oracle Wait(RAC)": {
+                    "max": {
+                        "field": "sherpa-4.0.perf.Oracle Wait(RAC)"
+                    }
+                },
+                "Oracle Wait(Conc)": {
+                    "max": {
+                        "field": "sherpa-4.0.perf.Oracle Wait(Conc)"
+                    }
+                },
+                "Oracle Wait(Network)": {
+                    "max": {
+                        "field": "sherpa-4.0.perf.Oracle Wait(Network)"
+                    }
+                },
+                "in_broadcast_ratio_max": {
+                    "max": {
+                        "field": "sherpa-4.0.perf.in_broadcast_ratio_max"
+                    }
+                },
+                "in_broadcast_ratio": {
+                    "max": {
+                        "field": "sherpa-4.0.perf.in_broadcast_ratio"
+                    }
+                }
+            }
+        }
+    }
+}

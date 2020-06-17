@@ -1,0 +1,215 @@
+CREATE OR REPLACE FUNCTION get_events_last24hours(userId integer, qoffset integer, qlimit integer, qIsAdmin integer) 
+        RETURNS table (return_event_sq val50,  
+                return_event_name val1000, 
+                return_event_level val10, 
+                return_event_policy_type val50, 
+                return_event_start_time ts_tz,
+                return_event_end_time ts_tz,
+                return_project_sq id_bigint,
+                return_reference_type val50,
+                return_reference_item_sq id_bigint,
+                return_status text,
+                return_duration text,
+                return_event_message val1000,
+                workspace_name text)  as 
+        
+        $$
+                
+                DECLARE 
+                workspace_ids bigint[];
+                project_ids bigint[];
+                instance_group_ids bigint[];
+                instance_ids bigint[];
+                
+        BEGIN
+                --1 means user is admin
+                IF ($4=1) THEN
+                           project_ids := array(select distinct(p.project_sq) from imp_project p Inner join imp_project_user_assign pu        on (pu.project_sq = p.project_sq) 
+                        where p.delete_yn ='N');
+                else
+                        project_ids := array(select distinct(p.project_sq) from imp_project p Inner join imp_project_user_assign pu        on (pu.project_sq = p.project_sq and pu.user_id=$1) 
+                        where p.delete_yn ='N');
+                END IF;                
+         
+                workspace_ids :=  array( select distinct( w.workspace_sq) from imp_workspace w inner join imp_workspace_user_assign wu
+                on wu.workspace_sq = w.workspace_sq  where (w.delete_yn ='N' and w.project_sq = any (project_ids))
+                );
+        
+                instance_group_ids := array(with recursive children as (
+                                                                select b.instance_group_sq, b.p_instance_group_sq from imp_instance_group b 
+                                         inner join imp_workspace_instancegroup_assign wig on b.instance_group_sq = wig.instance_group_sq 
+                                         inner join imp_workspace ws on ws.workspace_sq = wig.workspace_sq where b.delete_yn = 'N' 
+                                        and ws.workspace_sq = any(workspace_ids)  and ws.project_sq = any (project_ids) 
+                                        
+                                        union select a.instance_group_sq, a.p_instance_group_sq from imp_instance_group a 
+                                         join children c on a.p_instance_group_sq = c.instance_group_sq 
+                                        where a.delete_yn = 'N' )  
+                                        select distinct ig.instance_group_sq from imp_instance_group_assign ig inner join children ch on  
+                                                       ch.instance_group_sq = ig.instance_group_sq );
+                
+        
+                instance_ids := array( with recursive children as ( select b.instance_group_sq, b.p_instance_group_sq from imp_instance_group b 
+ 
+                        inner join imp_workspace_instancegroup_assign wig on b.instance_group_sq = wig.instance_group_sq 
+ 
+                        inner join imp_workspace ws on ws.workspace_sq = wig.workspace_sq where b.delete_yn = 'N' 
+                        and  ws.workspace_sq = any(workspace_ids) and ws.project_sq = any (project_ids) 
+ 
+                        union select a.instance_group_sq, a.p_instance_group_sq from imp_instance_group a join children c 
+                        on a.p_instance_group_sq = c.instance_group_sq 
+                        where a.delete_yn = 'N' )  
+                        select distinct i.instance_sq from  imp_instance_group_assign ig inner join children ch 
+                        on ch.instance_group_sq = ig.instance_group_sq 
+                        inner join imp_instance i on i.instance_sq = ig.instance_sq);
+                       
+        
+                RETURN QUERY
+                select filEv.event_sq, 
+                filEv.event_name, 
+                filEv.event_level, 
+                filEv.event_policy_type, 
+                filEv.event_start_time ,
+                filEv.event_end_time,
+                filEv.project_sq,
+                filEv.reference_type,
+                filEv.reference_item_sq,
+                filEv.status,duration, filEv.event_message, (
+                CASE 
+          WHEN Lower(event_policy_type) = 'abnormal'
+              AND Lower(reference_type) = 'instancegroup' THEN
+(
+select
+        concat(tab3.workspace_name, '~', tab3.workspace_sq, '~', tab7.solution_type, '~', tab5.instance_name )
+from
+        imp_instance_group tab1
+inner join imp_workspace_instancegroup_assign tab2 on
+        tab2.instance_group_sq = tab1.instance_group_sq
+inner join imp_workspace tab3 on
+        tab3.workspace_sq = tab2.workspace_sq  and tab3.project_sq = filEv.project_sq 
+        and tab3.delete_yn = 'N'
+inner join imp_instance_group_assign tab4 on
+        tab4.instance_group_sq = reference_item_sq
+inner join imp_instance tab5 on
+        tab5.instance_sq = tab4.instance_sq
+left join imp_solution_interface_info tab6 on
+        tab6.interface_info_key = tab5.interface_info_key
+left join imp_solution tab7 on
+        tab7.solution_sq = tab6.solution_sq
+where
+        tab1.instance_group_sq = reference_item_sq
+        and tab1.delete_yn = 'N'
+limit 1 )
+when lower(event_policy_type) = 'abnormal'
+and lower(reference_type) = 'workspace' then (
+select
+        concat(tab1.workspace_name, '~', tab1.workspace_sq, '~', tab7.solution_type, '~', tab5.instance_name )
+from
+        imp_workspace tab1
+inner join imp_workspace_instancegroup_assign tab2 on
+        tab2.workspace_sq = reference_item_sq and tab1.project_sq = filEv.project_sq 
+inner join imp_instance_group tab3 on
+        tab3.instance_group_sq = tab2.instance_group_sq
+        and tab3.delete_yn = 'N'
+inner join imp_instance_group_assign tab4 on
+        tab4.instance_group_sq = tab3.instance_group_sq
+inner join imp_instance tab5 on
+        tab5.instance_sq = tab4.instance_sq
+left join imp_solution_interface_info tab6 on
+        tab6.interface_info_key = tab5.interface_info_key
+left join imp_solution tab7 on
+        tab7.solution_sq = tab6.solution_sq
+        and tab7.delete_yn = 'N'
+where
+        tab1.workspace_sq = reference_item_sq
+        and tab1.delete_yn = 'N'
+limit 1 )
+else (
+select
+        concat(tab4.workspace_name, '~', tab4.workspace_sq, '~', tab6.solution_type, '~', tab1.instance_name )
+from
+        imp_instance tab1
+inner join imp_instance_group_assign tab2 on
+        tab2.instance_sq = reference_item_sq
+inner join imp_workspace_instancegroup_assign tab3 on
+        tab3.instance_group_sq = tab2.instance_group_sq
+inner join imp_workspace tab4 on
+        tab4.workspace_sq = tab3.workspace_sq and tab4.project_sq = filEv.project_sq 
+        and tab4.delete_yn = 'N'
+left join imp_solution_interface_info tab5 on
+        tab5.interface_info_key = tab1.interface_info_key
+left join imp_solution tab6 on
+        tab6.solution_sq = tab5.solution_sq
+        and tab6.delete_yn = 'N'
+where
+        tab1.instance_sq = reference_item_sq
+        and tab1.deleted_yn = 'N'
+limit 1)
+end
+) workspace_name  
+                from (
+                 select e.event_sq, 
+                e.event_name, 
+                e.event_level, 
+                e.event_policy_type, 
+                e.event_start_time ,
+                e.event_end_time,
+                e.project_sq,
+                e.reference_type,
+                e.reference_item_sq,
+                e.status, 
+                EXTRACT(EPOCH FROM (e.event_end_time-e.event_start_time))::int/60/60 
+                   || ':' ||TO_CHAR(e.event_end_time-e.event_start_time,'MI:SS') duration,
+                e.event_message from (
+                select event_sq, 
+                event_name, 
+                event_level, 
+                event_policy_type, 
+                event_start_time ,
+                cast(current_timestamp as ts_tz)event_end_time,
+                project_sq,
+                reference_type,
+                reference_item_sq,
+                'active'  status, 
+                event_message  from imp_event_current where project_sq = any(project_ids) and (
+                        (lower(reference_type) = 'workspace' and reference_item_sq = any(workspace_ids)) or 
+                        (lower(reference_type) = 'instancegroup' and reference_item_sq = any(instance_group_ids)) or 
+                         (lower(reference_type) = 'instance' and reference_item_sq = any(instance_ids)))
+                union all  
+                select event_sq, 
+                event_name, 
+                event_level, 
+                event_policy_type, 
+                event_start_time ,
+                event_end_time,
+                project_sq,
+                reference_type,
+                reference_item_sq,
+                'inactive'  status, 
+                event_message 
+                from imp_event_history where project_sq = any(project_ids) and (event_start_time <= now() and event_end_time >= now() - interval'1 day') and  
+                (
+                        (lower(reference_type) = 'workspace' and reference_item_sq = any(workspace_ids)) or
+                        (lower(reference_type) = 'instancegroup' and reference_item_sq = any(instance_group_ids)) or 
+                        (lower(reference_type) = 'instance' and reference_item_sq= any(instance_ids))
+                 )
+                order by event_end_time desc offset $2 limit $3) e
+        
+                ) filEv;
+                        
+                --raise notice 'project_ids:%',project_ids;
+                --raise notice 'workspace_ids:%',workspace_ids;
+                --raise notice 'INSTANCE GORUPS:%',instance_group_ids;
+                --raise notice 'INSTANCE Ids:%',instance_ids;
+        
+        
+                return;
+                                 
+        END;
+        
+        $$ LANGUAGE plpgsql;
+ 
+commit;
+ 
+ 
+drop FUNCTION get_events_last24hours(userId integer, qoffset integer, qlimit integer, qIsAdmin integer)
+ 

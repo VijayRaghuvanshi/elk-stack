@@ -1,0 +1,188 @@
+GET hotel-perf-2020.*.*/_search
+{"size":0,
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "bool": {
+            "should": [
+              {
+                "bool": {
+                  "must": [
+                    {
+                      "term": {
+                        "mon_key.keyword": {
+                          "value": "FAvI2TEhwhiKAkWy7R+QRCZR3nZDe1+RFlbeDAlZ+t8=",
+                          "boost": 1
+                        }
+                      }
+                    },
+                    {
+                      "term": {
+                        "nms-plus-5.0.type.keyword": {
+                          "value": "34426",
+                          "boost": 1
+                        }
+                      }
+                    }
+                  ],
+                  "adjust_pure_negative": true,
+                  "boost": 1
+                }
+              },
+              {
+                "bool": {
+                  "must": [
+                    {
+                      "term": {
+                        "mon_key.keyword": {
+                          "value": "FAvI2TEhwhiKAkWy7R+QRCZR3nZDe1+RFlbeDAlZ+t8=",
+                          "boost": 1
+                        }
+                      }
+                    },
+                    {
+                      "term": {
+                        "nms-plus-5.0.type.keyword": {
+                          "value": "34431",
+                          "boost": 1
+                        }
+                      }
+                    }
+                  ],
+                  "adjust_pure_negative": true,
+                  "boost": 1
+                }
+              },
+             
+              {
+                "bool": {
+                  "must": [
+                    {
+                      "term": {
+                        "mon_key.keyword": {
+                          "value": "HAa9NJBSbQpomHKT/v7snvEsyNVlvI8yuZdvXbenNCM=",
+                          "boost": 1
+                        }
+                      }
+                    },
+                    {
+                      "term": {
+                        "nms-plus-5.0.type.keyword": {
+                          "value": "34177",
+                          "boost": 1
+                        }
+                      }
+                    }
+                  ],
+                  "adjust_pure_negative": true,
+                  "boost": 1
+                }
+              },
+              {
+                "bool": {
+                  "must": [
+                    {
+                      "term": {
+                        "mon_key.keyword": {
+                          "value": "HAa9NJBSbQpomHKT/v7snvEsyNVlvI8yuZdvXbenNCM=",
+                          "boost": 1
+                        }
+                      }
+                    },
+                    {
+                      "term": {
+                        "nms-plus-5.0.type.keyword": {
+                          "value": "utpethernet(10/100)",
+                          "boost": 1
+                        }
+                      }
+                    }
+                  ],
+                  "adjust_pure_negative": true,
+                  "boost": 1
+                }
+              }
+            ],
+            "adjust_pure_negative": true,
+            "boost": 1
+          }
+        }
+      ],
+      "filter": [
+        {
+          "range": {
+            "@timestamp": {
+              "from": "2020-02-24T11:04:00.000Z",
+              "to": "2020-02-24T11:34:00.000Z",
+              "include_lower": true,
+              "include_upper": true,
+              "boost": 1
+            }
+          }
+        }
+      ],
+      "adjust_pure_negative": true,
+      "boost": 1
+    }
+  },
+  "aggs": {
+    "group_by_monKey": {
+      "terms": {
+        "field": "mon_key.keyword",
+        "size": 560,
+        "min_doc_count": 1,
+        "shard_min_doc_count": 0,
+        "show_term_doc_count_error": false,
+        "order": [
+          {
+            "_count": "desc"
+          },
+          {
+            "_key": "asc"
+          }
+        ]
+      },
+      "aggregations": {
+        "group_by_objectType": {
+          "terms": {
+            "field": "nms-plus-5.0.type.keyword",
+            "size": 10,
+            "min_doc_count": 1,
+            "shard_min_doc_count": 0,
+            "show_term_doc_count_error": false,
+            "order": [
+              {
+                "_count": "desc"
+              },
+              {
+                "_key": "asc"
+              }
+            ]
+          },
+          "aggregations": {
+            "time_aggregation": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1h",
+                "offset": 0,
+                "order": {
+                  "_key": "asc"
+                },
+                "keyed": false,
+                "min_doc_count": 0
+              },
+              "aggregations": {
+                "in_pps_max": {
+                  "max": {
+                    "field": "nms-plus-5.0.perf.in_pps_max"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

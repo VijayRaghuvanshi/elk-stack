@@ -1,0 +1,105 @@
+{
+ 
+    "query": {
+ 
+        "bool": {
+ 
+            "must": [
+ 
+                {
+ 
+                    "match": {
+ 
+                        "mon_key": {
+ 
+                            "query": 15,
+ 
+                            "operator": "OR",
+ 
+                            "prefix_length": 0,
+ 
+                            "max_expansions": 50,
+ 
+                            "fuzzy_transpositions": true,
+ 
+                            "lenient": false,
+ 
+                            "zero_terms_query": "NONE",
+ 
+                            "auto_generate_synonyms_phrase_query": true,
+ 
+                            "boost": 1
+ 
+                        }
+ 
+                    }
+ 
+                },
+ 
+                {
+ 
+                    "match": {
+ 
+                        "interface_info_key": {
+ 
+                            "query": "WORKSPACE",
+ 
+                            "operator": "OR",
+ 
+                            "prefix_length": 0,
+ 
+                            "max_expansions": 50,
+ 
+                            "fuzzy_transpositions": true,
+ 
+                            "lenient": false,
+ 
+                            "zero_terms_query": "NONE",
+ 
+                            "auto_generate_synonyms_phrase_query": true,
+ 
+                            "boost": 1
+ 
+                        }
+ 
+                    }
+ 
+                }
+ 
+            ],
+ 
+            "filter": [
+ 
+                {
+ 
+                    "range": {
+ 
+                        "@timestamp": {
+ 
+                            "from": "2019-12-23T09:57:00.000Z",
+ 
+                            "to": "2019-12-23T10:27:00.000Z",
+ 
+                            "include_lower": true,
+ 
+                            "include_upper": true,
+ 
+                            "boost": 1
+ 
+                        }
+ 
+                    }
+ 
+                }
+ 
+            ],
+ 
+            "adjust_pure_negative": true,
+ 
+            "boost": 1
+ 
+        }
+ 
+    }
+ 
+}
